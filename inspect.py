@@ -4,6 +4,7 @@ from .preprocess import preprocess
 from .contour import extract_cap
 from .config import PLC_DEFECT_BITS, CFG
 from . import defects
+import numpy as np 
 
 def load_image(path: str, resize_width: int = None) -> np.ndarray:
     img = cv2.imread(str(path))
@@ -19,10 +20,14 @@ def inspect_cap(img_bgr, early_exit=False):
     gray = preprocess(img_bgr)
     contour, mask = extract_cap(gray)
     if contour is None:
-        return {"status":"reject","plc_word":0xFFFF}
+        return {
+            "status": "reject",
+            "plc_word": 0xFFFF,
+            "results": {},
+        }
 
-    plc=0
-    results={}
+    plc_word = 0
+    results = {}
 
     checks=[
         ("circularity", lambda d: defects.circularity(contour,d)),
@@ -40,6 +45,11 @@ def inspect_cap(img_bgr, early_exit=False):
         results[name]=r
         if not r["pass"]:
             plc |= (1<<PLC_DEFECT_BITS[name])
-            if early_exit: break
+            # if early_exit: break
 
-    return {"status":"fail" if plc else "pass","plc_word":plc,"results":results}
+    # return {"status":"fail" if plc else "pass","plc_word":plc,"results":results}
+    return {
+        "status": "fail" if plc_word else "pass",
+        "plc_word": plc_word,
+        "results": results,
+    }

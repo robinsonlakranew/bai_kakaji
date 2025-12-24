@@ -1,6 +1,6 @@
 from bottlecap_inspection.inspect import inspect_cap
 
-path = ''
+path = 'path of image'
 
 image_bgr = load_image(path, resize_width=CFG['resize_width'])
 
