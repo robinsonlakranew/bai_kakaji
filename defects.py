@@ -1,7 +1,7 @@
 
 import cv2, numpy as np
-from .timing import timed
-from .config import CFG
+from timing import timed
+from config import CFG
 
 @timed
 def circularity(contour, dbg):

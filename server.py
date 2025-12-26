@@ -2,9 +2,9 @@ import cv2
 import time
 import snap7
 
-from bottlecap_inspection.inspect import inspect_cap
-from bottlecap_inspection.io import load_image
-from bottlecap_inspection.config import CFG
+from inspect_defects import inspect_cap
+from inspect_defects import load_image
+from config import CFG
 
 
 # =========================

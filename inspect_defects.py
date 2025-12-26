@@ -1,9 +1,9 @@
 
 import cv2
-from .preprocess import preprocess
-from .contour import extract_cap
-from .config import PLC_DEFECT_BITS, CFG
-from . import defects
+from preprocess import preprocess
+from contour import extract_cap
+from config import PLC_DEFECT_BITS, CFG
+import defects
 import numpy as np 
 
 def load_image(path: str, resize_width: int = None) -> np.ndarray:
@@ -44,8 +44,9 @@ def inspect_cap(img_bgr, early_exit=False):
         r=fn(dbg)
         results[name]=r
         if not r["pass"]:
-            plc |= (1<<PLC_DEFECT_BITS[name])
-            # if early_exit: break
+            print(name)
+            # plc |= (1<<PLC_DEFECT_BITS[name])
+            if early_exit: break
 
     # return {"status":"fail" if plc else "pass","plc_word":plc,"results":results}
     return {
