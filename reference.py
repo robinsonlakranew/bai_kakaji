@@ -1,12 +1,26 @@
 from defects import ColorContaminationCheck
-from preprocess import preprocess, load_image
+from preprocess import preprocess
 from contour import extract_cap
 from config import CFG
+
+import numpy as np
+import cv2
+
+def load_image(path: str, resize_width: int = None) -> np.ndarray:
+    img = cv2.imread(str(path))
+    if img is None:
+        raise ValueError(f"Could not read image: {path}")
+    if resize_width is not None:
+        h, w = img.shape[:2]
+        scale = resize_width / float(w)
+        img = cv2.resize(img, (resize_width, int(h * scale)), interpolation=cv2.INTER_AREA)
+    return img
+
 ### reference code for color contamination
 
 reference_img = load_image("/content/34_Piece_image_0.bmp", resize_width=CFG['resize_width'])
-reference_orig, reference_gray = preprocess(reference_img, CFG)
-reference_contour_main, reference_orig, reference_mask = extract_cap(reference_gray, CFG)
+reference_gray = preprocess(reference_img, CFG)
+reference_contour_main,reference_mask = extract_cap(reference_gray, CFG)
 
 imgs_with_masks = [(reference_img, reference_mask)] #, (img2, mask2)]
 
