@@ -1,7 +1,7 @@
 
 import cv2, numpy as np
 from timing import timed
-from config import CFG
+from config import CFG, DEFAULT_CFG, PLC_DEFECT_BITS, COLOR_CFG
 import math
 from pathlib import Path
 import json
