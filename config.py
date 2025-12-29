@@ -22,3 +22,24 @@ CFG = {
     "max_chip_depth_ratio": 0.02,
     "color_delta_thresh": 18,
 }
+
+COLOR_CFG = {
+    # reference storage
+    "reference_save_path": "color_references.json",
+
+    # center / edge logic
+    "center_erosion_ratio": 0.35,
+
+    # patch logic
+    "patch_grid_size": (32, 32),      # (h, w)
+    "patch_delta_e_threshold": 6.0,
+    "patch_min_area_px": 80,
+
+    # decision thresholds
+    "global_delta_e_threshold": 5.0,
+    "edge_delta_e_threshold": 5.0,
+
+    # debug drawing
+    "debug_draw_font_scale": 0.5,
+    "debug_draw_thickness": 1,
+}

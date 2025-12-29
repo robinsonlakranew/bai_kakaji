@@ -6,6 +6,20 @@ from config import PLC_DEFECT_BITS, CFG
 import defects
 import numpy as np 
 
+def load_reference(path):
+    d = np.load(path, allow_pickle=True)
+    return {
+        "version": str(d["version"]),
+        "image_shape": tuple(d["image_shape"]),
+        "area": float(d["area"]),
+        "hull_area": float(d["hull_area"]),
+        "sectors": {
+            "num_sectors": int(d["num_sectors"]),
+            "r_max": d["r_max"],
+        },
+        "erosion_px": int(d["erosion_px"]),
+    }
+
 def load_image(path: str, resize_width: int = None) -> np.ndarray:
     img = cv2.imread(str(path))
     if img is None:
@@ -19,6 +33,8 @@ def load_image(path: str, resize_width: int = None) -> np.ndarray:
 def inspect_cap(img_bgr, early_exit=False):
     gray = preprocess(img_bgr)
     contour, mask = extract_cap(gray)
+    REF = load_reference("cap_reference.npz")
+
     if contour is None:
         return {
             "status": "reject",
@@ -32,11 +48,10 @@ def inspect_cap(img_bgr, early_exit=False):
     checks=[
         ("circularity", lambda d: defects.circularity(contour,d)),
         ("flash", lambda d: defects.flash(contour,d)),
-        ("short_fill", lambda d: defects.short_fill(contour,d)),
+        ("short_fill", lambda d: defects.short_fill(contour,gray,REF)),
         ("pinholes", lambda d: defects.pinholes(gray,mask,d)),
         ("blobs", lambda d: defects.blobs(gray,mask,d)),
-        ("chips", lambda d: defects.chips(contour,d)),
-        ("cracks", lambda d: defects.cracks(gray,mask,d)),
+        ("color", lambda d: defects.color_contamination(img_bgr, mask, d, 'blue')),
     ]
 
     for name,fn in checks:
