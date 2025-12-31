@@ -12,6 +12,19 @@ PLC_DEFECT_BITS = {
 
 CFG = {
     'resize_width': 1024,
+    'gaussian_blur_ksize': (5, 5),
+    'min_contour_area': 2000,        # reject tiny contours
+    'circularity_tol': 0.85,        # threshold for 4πA/P²
+    'axis_ratio_tol': 0.95,         # minor/major (ellipse)
+    'radial_variance_tol': 0.035,   # normalized variance
+    'require_checks': 2,            # how many of the 3 checks must pass
+    # small blob (optional) settings:
+    'pinhole_thresh_blocksize': 41,
+    'pinhole_thresh_C': 8,
+    'small_blob_area_min': 20,
+    'small_blob_area_max': 800,
+    'pinhole_area_max': 200,
+    'resize_width': 1024,
     "min_circularity": 0.92,
     "max_flash_ratio": 0.015,
     "min_fill_ratio": 0.97,

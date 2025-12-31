@@ -519,8 +519,8 @@ def draw_sector_overlay(img, center, ref_r, curr_r, failing):
 
 @timed
 def short_fill(contour, gray, reference,
-                       sector_ratio_thresh=0.92,
-                       min_consecutive_sectors=2,
+                       sector_ratio_thresh=0.98,
+                       min_consecutive_sectors=1,
                        area_ratio_thresh=0.95,
                        debug=False):
 

@@ -6,6 +6,25 @@ from config import CFG
 import numpy as np
 import cv2
 
+def extract_main_contour(gray):
+    _, thr = cv2.threshold(
+        gray, 0, 255,
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+    thr = cv2.morphologyEx(thr, cv2.MORPH_CLOSE, kernel)
+
+    contours, _ = cv2.findContours(
+        thr, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if not contours:
+        return None
+
+    return max(contours, key=cv2.contourArea)
+
+
 def load_image(path: str, resize_width: int = None) -> np.ndarray:
     img = cv2.imread(str(path))
     if img is None:
