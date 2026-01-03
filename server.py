@@ -96,6 +96,8 @@ def main():
 
             # --- Vision ---
             image = cv2.resize(frame, CFG["resize_width"])
+            # image_bgr = load_image(path, resize_width=CFG['resize_width'])
+            
             result = inspect_cap(image, early_exit=False)
 
             # status = result["status"]

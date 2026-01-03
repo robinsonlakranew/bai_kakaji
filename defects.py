@@ -6,21 +6,14 @@ import math
 from pathlib import Path
 import json
 
-def compute_circularity_metrics(contour: np.ndarray) -> dict[str, float]:
-    """
-    Compute shape metrics from outer contour.
-    Safe for production: guards all degenerate cases.
-    """
+def compute_circularity_metrics(contour: np.ndarray) -> dict[str, any]:
     area = float(cv2.contourArea(contour))
     perim = float(cv2.arcLength(contour, True))
 
-    # --- Circularity ---
     circularity = (4.0 * math.pi * area / (perim * perim)) if perim > 1e-8 else 0.0
 
-    # --- Min enclosing circle ---
     (cx, cy), radius = cv2.minEnclosingCircle(contour)
 
-    # --- Centroid ---
     M = cv2.moments(contour)
     if M["m00"] > 1e-8:
         centroid_x = M["m10"] / M["m00"]
@@ -28,16 +21,21 @@ def compute_circularity_metrics(contour: np.ndarray) -> dict[str, float]:
     else:
         centroid_x, centroid_y = cx, cy
 
-    # --- Ellipse / axis ratio ---
-    axis_ratio = 0.0
+    axis_ratio = 1.0
+    ellipse_data = None
     if len(contour) >= 5:
-        (_, _), (a, b), _ = cv2.fitEllipse(contour)
+        (ex, ey), (a, b), angle = cv2.fitEllipse(contour)
         major = max(a, b)
         minor = min(a, b)
         if major > 1e-8:
             axis_ratio = minor / major
+        ellipse_data = {
+            "center": (ex, ey),
+            "major": major,
+            "minor": minor,
+            "angle": angle,
+        }
 
-    # --- Radial variance ---
     pts = contour.reshape(-1, 2).astype(np.float32)
     dx = pts[:, 0] - centroid_x
     dy = pts[:, 1] - centroid_y
@@ -55,14 +53,43 @@ def compute_circularity_metrics(contour: np.ndarray) -> dict[str, float]:
         "perimeter": perim,
         "circularity": circularity,
         "axis_ratio": axis_ratio,
-        "mean_radius": mean_r,
         "radial_variance": radial_var,
-        "center_x": float(cx),
-        "center_y": float(cy),
-        "radius": float(radius),
-        "centroid_x": float(centroid_x),
-        "centroid_y": float(centroid_y),
+        "mean_radius": mean_r,
+        "centroid_x": centroid_x,
+        "centroid_y": centroid_y,
+        "min_enclosing_circle": {
+            "center": (cx, cy),
+            "radius": radius,
+        },
+        "ellipse": ellipse_data,
     }
+
+def annotate_image(orig: np.ndarray, contour: np.ndarray, metrics: dict[str,any], extra_text: str = None, blob_mask: np.ndarray = None) -> np.ndarray:
+    vis = orig.copy()
+    if contour is not None:
+        cv2.drawContours(vis, [contour], -1, (0,255,0), 2)
+    mec = metrics.get('min_enclosing_circle')
+    if mec:
+        cx, cy = int(mec['center'][0]), int(mec['center'][1])
+        r = int(mec['radius'])
+        cv2.circle(vis, (cx, cy), r, (255,0,0), 2)
+        cv2.circle(vis, (cx, cy), 3, (255,0,0), -1)
+    if metrics.get('ellipse'):
+        ex, ey = metrics['ellipse']['center']
+        major = metrics['ellipse']['major']
+        minor = metrics['ellipse']['minor']
+        angle = metrics['ellipse']['angle']
+        cv2.ellipse(vis, (int(ex), int(ey)), (int(major/2), int(minor/2)), angle, 0, 360, (255,255,0), 2)
+    txt = f"Circ:{metrics.get('circularity',0):.3f} AxisR:{metrics.get('axis_ratio',0):.3f} RadVar:{metrics.get('radial_variance',0):.4f}"
+    cv2.putText(vis, txt, (8, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA)
+    if extra_text:
+        cv2.putText(vis, extra_text, (8, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 1, cv2.LINE_AA)
+    if blob_mask is not None:
+        mask_rgb = cv2.cvtColor(blob_mask, cv2.COLOR_GRAY2BGR)
+        red_mask = np.zeros_like(mask_rgb)
+        red_mask[:, :, 2] = mask_rgb[:, :, 0]
+        vis = cv2.addWeighted(vis, 1.0, red_mask, 0.35, 0.0)
+    return vis
 
 @timed
 def circularity(
@@ -71,39 +98,38 @@ def circularity(
     cfg: dict = CFG
 ) -> dict[str, any]:
 
-    # ---- Compute metrics ----
     metrics = compute_circularity_metrics(contour)
 
     circ = metrics["circularity"]
     axis_ratio = metrics["axis_ratio"]
     radial_var = metrics["radial_variance"]
 
-    # ---- Individual checks ----
     circ_ok = circ >= cfg["circularity_tol"]
     axis_ok = axis_ratio >= cfg["axis_ratio_tol"]
     radial_ok = radial_var <= cfg["radial_variance_tol"]
 
     passed = circ_ok and axis_ok and radial_ok
 
-    # ---- Debug overlay ----
-    color = (0, 255, 0) if passed else (0, 0, 255)
-    cv2.drawContours(dbg, [contour], -1, color, 2)
+    # ---- Build status text ----
+    status_txt = "OK" if passed else "CIRC_FAIL"
 
-    txt1 = f"C:{circ:.3f} AR:{axis_ratio:.3f} RV:{radial_var:.4f}"
-    txt2 = "OK" if passed else "CIRC_FAIL"
+    # ---- Annotate using shared utility ----
+    annotated = annotate_image(
+        orig=dbg,
+        contour=contour,
+        metrics=metrics,
+        extra_text=status_txt,
+        blob_mask=None
+    )
 
-    cv2.putText(
-        dbg, txt1, (8, 24),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1, cv2.LINE_AA
-    )
-    cv2.putText(
-        dbg, txt2, (8, 48),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, cv2.LINE_AA
-    )
+    # ---- Save image (hard coded path) ----
+    ts = int(time.time() * 1000)
+    fname = f"{'OK' if passed else 'NG'}_circ_{ts}.png"
+    cv2.imwrite('/content/circularity.bmp', annotated)
 
     return {
         "pass": bool(passed),
-        "score": float(circ),  # primary score, like before
+        "score": float(circ),
         "details": {
             "circularity": circ,
             "axis_ratio": axis_ratio,
@@ -112,7 +138,7 @@ def circularity(
             "axis_ratio_ok": axis_ok,
             "radial_var_ok": radial_ok,
         },
-        "overlay": dbg
+        "overlay": annotated,
     }
 
 @timed

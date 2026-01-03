@@ -38,8 +38,8 @@ def load_image(path: str, resize_width: int = None) -> np.ndarray:
 ### reference code for color contamination
 
 reference_img = load_image("/content/34_Piece_image_0.bmp", resize_width=CFG['resize_width'])
-reference_gray = preprocess(reference_img, CFG)
-reference_contour_main,reference_mask = extract_cap(reference_gray, CFG)
+reference_gray = preprocess(reference_img)
+reference_contour_main,reference_mask = extract_cap(reference_gray)
 
 imgs_with_masks = [(reference_img, reference_mask)] #, (img2, mask2)]
 
